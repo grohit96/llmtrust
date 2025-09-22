@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LLMTrust Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      h1 {
+        color: #2c3e50;
+      }
+      textarea {
+        width: 100%;
+        height: 80px;
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px 20px;
+      }
+      .answer {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #f9f9f9;
+      }
+      .claim {
+        margin: 5px 0;
+      }
+      .verified {
+        color: green;
+        font-weight: bold;
+      }
+      .unknown {
+        color: orange;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LLMTrust Gateway Demo</h1>
+    <p>
+      Ask a question. The gateway will sanitize input, return claims with
+      verification labels, and sign the response.
+    </p>
+
+    <textarea id="prompt" placeholder="Type your question..."></textarea><br />
+    <button onclick="sendChat()">Submit</button>
+
+    <div id="result" class="answer"></div>
+
+    <script>
+      async function sendChat() {
+        const prompt = document.getElementById("prompt").value;
+
+        const response = await fetch("http://127.0.0.1:8000/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: "demo-user",
+            role: "analyst",
+            prompt: prompt,
+          }),
+        });
+
+        const data = await response.json();
+
+        // Save for verification later
+        window.lastResponse = data;
+
+        let html = `<h3>Answer</h3><p>${data.answer}</p>`;
+        html += `<h3>Claims</h3>`;
+        data.claims.forEach((c) => {
+          let badge = "";
+          if (c.label === "verified") {
+            badge = `<span style="color: white; background: green; padding: 2px 6px; border-radius: 5px;">✔ VERIFIED</span>`;
+          } else if (c.label === "unknown") {
+            badge = `<span style="color: white; background: orange; padding: 2px 6px; border-radius: 5px;">❓ UNKNOWN</span>`;
+          } else if (c.label === "contested") {
+            badge = `<span style="color: white; background: red; padding: 2px 6px; border-radius: 5px;">⚠ CONTESTED</span>`;
+          }
+          html += `<div class="claim">${c.text} — ${badge} (conf: ${c.confidence})</div>`;
+        });
+
+        html += `<h3>Signature</h3><pre>${data.signature}</pre>`;
+        html += `<button onclick="verifyResponse()">Verify Signature</button>`;
+
+        document.getElementById("result").innerHTML = html;
+      }
+
+      async function verifyResponse() {
+        if (!window.lastResponse) return;
+        const response = await fetch("http://127.0.0.1:8000/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(window.lastResponse),
+        });
+        const data = await response.json();
+        alert("Signature valid? " + data.signature_valid);
+      }
+    </script>
+  </body>
+</html>
