@@ -56,7 +56,7 @@ Verified + Signed Response
 ## 🚀 Next Steps (MVP Roadmap)
 
 - ✅ Step 1: Define vision & repo (this README).
-- 🔄 Step 2: Build API skeleton (`/chat`, `/verify`).
+- ✅ Step 2: Build API skeleton (`/chat`, `/verify`).
 - 🔄 Step 3: Add input sanitization + output signing.
 - 🔄 Step 4: Add claim verification with citations.
 - 🔄 Step 5: Demo web UI + blog post launch.
