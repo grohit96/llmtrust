@@ -66,3 +66,32 @@ Verified + Signed Response
 ## 📌 Status
 
 This is a **work-in-progress** prototype. Follow for updates, or contribute ideas in Issues/PRs.
+
+## 🚀 Quickstart
+
+### Backend (FastAPI)
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run server:
+   uvicorn backend.main:app --reload
+
+3. Open API docs: http://127.0.0.1:8000/docs
+
+Frontend (Minimal HTML Demo)
+
+Open frontend/index.html in your browser.
+
+Type a question, click Submit.
+
+See:
+
+Answer with PII redacted
+
+Claims labeled (✔ Verified / ❓ Unknown)
+
+Digital signature
+
+Click Verify Signature → popup confirms authenticity

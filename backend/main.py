@@ -7,6 +7,8 @@ import base64
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 from fastapi.middleware.cors import CORSMiddleware
+import requests
+
 
 # -------------------------
 # Setup FastAPI
@@ -71,6 +73,39 @@ def verify_signature(payload: dict, signature_b64: str) -> bool:
     except Exception:
         return False
 
+def fact_check_claims(answer: str):
+    claims = []
+    sentences = re.split(r'[.?!]', answer)
+
+    try:
+        wiki_resp = requests.get(
+            "https://en.wikipedia.org/api/rest_v1/page/summary/OpenAI",
+            headers={"User-Agent": "LLMTrust/0.1 (https://example.com)"},
+            timeout=5
+        )
+        print("DEBUG: Wikipedia status:", wiki_resp.status_code)
+        print("DEBUG: Wikipedia response:", wiki_resp.text[:300])
+
+        wiki_resp.raise_for_status()
+        evidence = wiki_resp.json().get("extract", "").lower()
+
+        for s in sentences:
+            s_clean = s.strip().lower()
+            if not s_clean:
+                continue
+            if s_clean in evidence:
+                claims.append({"text": s.strip(), "label": "verified", "confidence": 0.9, "evidence": evidence[:200] + "..."})
+            elif any(word in evidence for word in s_clean.split()[:3]):
+                claims.append({"text": s.strip(), "label": "unknown", "confidence": 0.5, "evidence": evidence[:200] + "..."})
+            else:
+                claims.append({"text": s.strip(), "label": "unknown", "confidence": 0.3, "evidence": None})
+
+    except Exception as e:
+        claims.append({"text": "No evidence available", "label": "unknown", "confidence": 0.0, "evidence": str(e)})
+
+    return claims
+
+
 # -------------------------
 # Routes
 # -------------------------
@@ -79,14 +114,11 @@ def chat(request: ChatRequest):
     # 1. Sanitize input
     clean_prompt = sanitize_input(request.prompt)
 
-    # 2. Dummy AI response (replace later with real LLM call)
+    # 2. Dummy AI response
     answer = f"Processed your prompt safely: '{clean_prompt}'"
 
-    # 3. Fake claim verification (static for demo)
-    claims = [
-        {"text": "AI answers can hallucinate", "label": "verified", "confidence": 0.95},
-        {"text": "This gateway is already production-ready", "label": "unknown", "confidence": 0.40}
-    ]
+    # 3. Use only the prompt (not the whole answer wrapper) for fact-checking
+    claims = fact_check_claims(clean_prompt)
 
     # 4. Build payload
     response_id = str(uuid.uuid4())
@@ -104,6 +136,8 @@ def chat(request: ChatRequest):
         "signature": signature,
         "public_key": public_pem
     }
+
+
 
 @app.post("/verify")
 def verify(response: ChatResponse):
