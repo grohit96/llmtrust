@@ -1,5 +1,28 @@
-fastapi
-uvicorn
-pydantic
-cryptography
-requests
+# Core framework
+fastapi>=0.111.0
+uvicorn>=0.30.1
+
+# LangChain + ecosystem
+langchain>=0.3.27
+langchain-community>=0.3.7
+langchain-openai>=0.2.11
+langchain-text-splitters>=0.3.11
+
+# Vector store
+faiss-cpu>=1.12.0
+
+# OpenAI API client
+openai>=1.2.0
+
+# PDF loading
+pypdf>=6.0.0
+
+# Database (for audit trail)
+sqlalchemy>=2.0.0
+
+# Security + signing
+cryptography>=42.0.0
+
+# Utils
+requests>=2.32.0
+python-dotenv>=1.0.0

@@ -5,18 +5,20 @@ __pycache__/
 *.pyd
 *.db
 *.sqlite3
-.venv/
-venv/
+
+# Virtual env
 .env
+.venv/
+env/
+venv/
 
-# Node/Frontend
-node_modules/
-dist/
-build/
+# FAISS index
+vectorstore/
 
-# System files
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log

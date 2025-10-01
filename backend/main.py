@@ -1,23 +1,36 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import re
 import uuid
 import json
 import base64
+import re
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
-from fastapi.middleware.cors import CORSMiddleware
-import requests
+
+# Local imports (placeholders – we’ll implement next)
+from backend.retriever import retrieve_contract_sections
+from backend.llm_client import ask_llm
+from backend.trust_layer import trust_wrap
+from backend.audit import get_audit_by_id, log_audit
 
 
 # -------------------------
 # Setup FastAPI
 # -------------------------
-app = FastAPI(title="LLMTrust Gateway MVP")
+app = FastAPI(title="LLMTrust Gateway – Legal Edition")
+
+# Enable CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # tighten in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -------------------------
 # Keypair for signing
-# (in real version: store in Vault or env var)
 # -------------------------
 private_key = Ed25519PrivateKey.generate()
 public_key = private_key.public_key()
@@ -33,17 +46,14 @@ public_pem = public_key.public_bytes(
 class ChatRequest(BaseModel):
     user_id: str
     role: str
-    prompt: str
-
-class Claim(BaseModel):
-    text: str
-    label: str
-    confidence: float
+    query: str   # renamed from "prompt"
 
 class ChatResponse(BaseModel):
     response_id: str
     answer: str
-    claims: list[Claim]
+    citations: list[str]
+    confidence: float
+    audit_id: str
     signature: str
     public_key: str
 
@@ -73,62 +83,35 @@ def verify_signature(payload: dict, signature_b64: str) -> bool:
     except Exception:
         return False
 
-def fact_check_claims(answer: str):
-    claims = []
-    sentences = re.split(r'[.?!]', answer)
-
-    try:
-        wiki_resp = requests.get(
-            "https://en.wikipedia.org/api/rest_v1/page/summary/OpenAI",
-            headers={"User-Agent": "LLMTrust/0.1 (https://example.com)"},
-            timeout=5
-        )
-        print("DEBUG: Wikipedia status:", wiki_resp.status_code)
-        print("DEBUG: Wikipedia response:", wiki_resp.text[:300])
-
-        wiki_resp.raise_for_status()
-        evidence = wiki_resp.json().get("extract", "").lower()
-
-        for s in sentences:
-            s_clean = s.strip().lower()
-            if not s_clean:
-                continue
-            if s_clean in evidence:
-                claims.append({"text": s.strip(), "label": "verified", "confidence": 0.9, "evidence": evidence[:200] + "..."})
-            elif any(word in evidence for word in s_clean.split()[:3]):
-                claims.append({"text": s.strip(), "label": "unknown", "confidence": 0.5, "evidence": evidence[:200] + "..."})
-            else:
-                claims.append({"text": s.strip(), "label": "unknown", "confidence": 0.3, "evidence": None})
-
-    except Exception as e:
-        claims.append({"text": "No evidence available", "label": "unknown", "confidence": 0.0, "evidence": str(e)})
-
-    return claims
-
-
 # -------------------------
 # Routes
 # -------------------------
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    # 1. Sanitize input
-    clean_prompt = sanitize_input(request.prompt)
+    # 1. Clean the query
+    clean_query = sanitize_input(request.query)
 
-    # 2. Dummy AI response
-    answer = f"Processed your prompt safely: '{clean_prompt}'"
+    # 2. Retrieve supporting contract sections
+    docs = retrieve_contract_sections(clean_query)
 
-    # 3. Use only the prompt (not the whole answer wrapper) for fact-checking
-    claims = fact_check_claims(clean_prompt)
+    # 3. Ask LLM to summarize/answer using retrieved docs
+    answer = ask_llm(clean_query, docs)
 
-    # 4. Build payload
+    # 4. Wrap with trust metadata (citations, confidence, audit_id)
     response_id = str(uuid.uuid4())
-    payload = {
-        "response_id": response_id,
-        "answer": answer,
-        "claims": claims
-    }
+    response = trust_wrap(response_id, clean_query, answer, docs)
 
-    # 5. Sign payload
+    # 5. Log audit trail
+    log_audit(response)
+
+    # 6. Sign payload
+    payload = {
+        "response_id": response["response_id"],
+        "answer": response["answer"],
+        "citations": response["citations"],
+        "confidence": response["confidence"],
+        "audit_id": response["audit_id"]
+    }
     signature = sign_response(payload)
 
     return {
@@ -137,24 +120,20 @@ def chat(request: ChatRequest):
         "public_key": public_pem
     }
 
-
+@app.get("/audit/{audit_id}")
+def get_audit(audit_id: str):
+    """Fetch full audit log"""
+    return get_audit_by_id(audit_id)
 
 @app.post("/verify")
 def verify(response: ChatResponse):
+    """Check if signature is valid"""
     payload = {
         "response_id": response.response_id,
         "answer": response.answer,
-        "claims": [c.dict() for c in response.claims],
+        "citations": response.citations,
+        "confidence": response.confidence,
+        "audit_id": response.audit_id
     }
     is_valid = verify_signature(payload, response.signature)
     return {"signature_valid": is_valid}
-
-
-# Allow frontend (local HTML file) to call backend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # in dev: allow all, in prod: restrict domains
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)

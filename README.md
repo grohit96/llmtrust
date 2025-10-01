@@ -1,97 +1,125 @@
-# LLMTrust
+LLMTrust
 
-**AI outputs can hallucinate, leak secrets, and can’t be verified. LLMTrust is a security gateway that solves this.**
+AI outputs can hallucinate, leak secrets, and can’t be verified. LLMTrust is a security + trust layer that solves this — starting with legal documents.
 
----
-
-## 🚩 Problem
+🚩 The Initial Problem
 
 Large Language Models (LLMs) are powerful but risky to use directly:
 
-- They may **hallucinate facts** and present them as truth.
-- They may **leak sensitive data** from user prompts.
-- Their outputs cannot be **independently verified or audited**.
+They may hallucinate facts and present them as truth.
 
-This makes AI adoption difficult in regulated industries (finance, healthcare, government) where **trust and compliance** are non-negotiable.
+They may leak sensitive data from user prompts.
 
----
+Their outputs cannot be independently verified or audited.
 
-## 🔑 Solution
+This makes adoption difficult in regulated industries (finance, healthcare, law, government) where trust and compliance are critical.
 
-**LLMTrust** is a neutral **security and trust gateway** that sits between users and AI models. It:
+🔑 The Solution
 
-1. **Filters Inputs**  
-   Removes secrets, PII, and blocks prompt-injection attacks before reaching the model.
+LLMTrust is a security and trust gateway that sits between users and AI models.
 
-2. **Verifies Outputs**  
-   Extracts key claims, checks them against trusted corpora, and labels them (✔ Verified / ⚠ Contested / ❓ Unknown).
+It provides:
 
-3. **Cryptographically Signs Responses**  
-   Every answer is stamped with a digital signature, making it tamper-evident and auditable.
+Input Guards – prevent prompt injection, strip PII/secrets.
 
-Think of it as the **JWT/OAuth2 of AI responses** — a standard way to ensure provenance, auditability, and trust.
+Evidence-Based Outputs – every answer comes with citations + confidence scores.
 
----
+Cryptographic Signing – responses are signed and auditable (tamper-proof).
 
-## 📊 High-Level Flow
+Audit Trail – every interaction is logged for compliance review.
 
+Think of it as the JWT/OAuth2 of AI responses — a standard way to ensure provenance, auditability, and trust.
+
+🔄 Pivot: Legal First
+
+While the long-term vision is AI trust for all industries, we’ve pivoted the MVP to focus on legal and compliance documents because:
+
+📄 Contracts, NDAs, and policies are easier to ingest/test (structured PDF docs).
+
+⚖️ Legal is a high-trust, compliance-heavy domain → perfect fit for LLMTrust.
+
+🚀 Quickest way to demonstrate “LLM with receipts”: citations, audit trail, signed answers.
+
+📊 Current High-Level Flow
 User ---> [ LLMTrust Gateway ] ---> LLM Model
-| Inbound Guards
-| Policy Engine
-| Claim Verification
-| Signing + Audit
+| Input Guard
+| Retrieval from legal PDFs/contracts
+| Claim Verification + Citations
+| Signing + Audit Trail
 v
-Verified + Signed Response
+Verified + Signed Answer
 
----
+📌 Current Status
 
-## 🎯 Why It Matters
+We now have a working backend prototype with:
 
-- **For Users**: See which parts of an AI answer are reliable.
-- **For Companies**: Prove to auditors and regulators that outputs are secure and verified.
-- **For Everyone**: Establish a trust layer that could become as standard as JWT or OAuth2 for AI.
+✅ PDF ingestion + FAISS vector search
 
----
+✅ /chat API endpoint (FastAPI)
 
-## 🚀 Next Steps (MVP Roadmap)
+✅ Verified answers with citations + confidence score
 
-- ✅ Step 1: Define vision & repo (this README).
-- ✅ Step 2: Build API skeleton (`/chat`, `/verify`).
-- 🔄 Step 3: Add input sanitization + output signing.
-- 🔄 Step 4: Add claim verification with citations.
-- 🔄 Step 5: Demo web UI + blog post launch.
+✅ Cryptographic signing (tamper-proof)
 
----
+✅ Audit logging (every request/response tracked)
 
-## 📌 Status
+Example output:
 
-This is a **work-in-progress** prototype. Follow for updates, or contribute ideas in Issues/PRs.
+Answer with citations from PDF
 
-## 🚀 Quickstart
+Confidence = 0.46
 
-### Backend (FastAPI)
+Audit ID for traceability
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Run server:
-   uvicorn backend.main:app --reload
+Digital signature + public key
 
-3. Open API docs: http://127.0.0.1:8000/docs
+🛠️ Next Phases (Roadmap)
 
-Frontend (Minimal HTML Demo)
+Phase 1 (Done) → Backend skeleton + retrieval + signing
 
-Open frontend/index.html in your browser.
+Phase 2 (Now) → Input sanitization + richer audit logging
 
-Type a question, click Submit.
+Phase 3 → Reasoning trace (“show the work”)
 
-See:
+Phase 4 → Minimal frontend (upload PDF + chat UI)
 
-Answer with PII redacted
+Phase 5 → Packaging (Docker, demo repo, live demo)
 
-Claims labeled (✔ Verified / ❓ Unknown)
+Phase 6 → Expand to other domains (finance, healthcare, compliance APIs)
 
-Digital signature
+🚀 Quickstart
+Backend (FastAPI)
 
-Click Verify Signature → popup confirms authenticity
+Install dependencies:
+
+pip install -r requirements.txt
+
+Run server:
+
+uvicorn backend.main:app --reload
+
+Test with:
+
+curl -X POST "http://127.0.0.1:8000/chat" \
+ -H "Content-Type: application/json" \
+ -d '{"user_id":"123","role":"analyst","query":"Summarize contract terms"}'
+
+Frontend (coming soon 🚧)
+
+Minimal React/Vue app where users can upload PDFs and query.
+
+Shows:
+
+Answer
+
+Citations (with scores)
+
+Confidence level
+
+Digital signature + Verify button
+
+🎯 Vision
+
+LLMTrust is building the trust + compliance layer for AI. Starting with legal contracts, expanding into finance, healthcare, and government.
+
+Every AI answer will be: auditable, verifiable, signed.
